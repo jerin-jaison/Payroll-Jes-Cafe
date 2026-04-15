@@ -83,7 +83,7 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             'id', 'table', 'table_number', 'employee', 'employee_name',
-            'status', 'payment_method', 'total_amount', 'notes',
+            'status', 'payment_method', 'total_amount', 'discount_percentage', 'notes',
             'items', 'created_at', 'updated_at'
         ]
 
@@ -92,6 +92,7 @@ class CreateOrderSerializer(serializers.Serializer):
     table_id = serializers.IntegerField()
     employee_id = serializers.IntegerField(required=False, allow_null=True)
     notes = serializers.CharField(required=False, allow_blank=True)
+    discount_percentage = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=0, max_value=100, required=False, allow_null=True)
     items = serializers.ListField(
         child=serializers.DictField()
     )
@@ -107,7 +108,8 @@ class CreateOrderSerializer(serializers.Serializer):
             order = Order.objects.create(
                 table=table,
                 employee=employee,
-                notes=validated_data.get('notes', '')
+                notes=validated_data.get('notes', ''),
+                discount_percentage=validated_data.get('discount_percentage')
             )
 
             for item_data in validated_data['items']:

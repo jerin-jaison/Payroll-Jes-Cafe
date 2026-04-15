@@ -20,6 +20,7 @@ export default function OrderTaking() {
   const [cart, setCart] = useState([])
   const [selectedEmp, setSelectedEmp] = useState('')
   const [notes, setNotes] = useState('')
+  const [discountPercentage, setDiscountPercentage] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -59,12 +60,19 @@ export default function OrderTaking() {
 
   const handlePlaceOrder = async () => {
     if (cart.length === 0) return toast.error('Add items to order first')
+    if (discountPercentage) {
+      const dp = parseFloat(discountPercentage);
+      if (dp < 0 || dp > 100) {
+        return toast.error('Discount must be between 0 and 100');
+      }
+    }
     setSubmitting(true)
     try {
       const { data: order } = await orderAPI.create({
         table_id: parseInt(tableId),
         employee_id: selectedEmp || null,
         notes,
+        discount_percentage: discountPercentage ? parseFloat(discountPercentage) : null,
         items: cart.map(c => ({ menu_item_id: c.id, quantity: c.qty }))
       })
       toast.success('Order placed successfully!')
@@ -101,8 +109,8 @@ export default function OrderTaking() {
         <div className="flex-1 overflow-y-auto p-4">
           {/* Search */}
           <div className="relative mb-3">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-            <input className="input-field pl-9" placeholder="Search menu..." value={search} onChange={e => setSearch(e.target.value)} />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            <input className="input-field input-with-icon" placeholder="Search menu..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           {/* Category Tabs */}
           <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
@@ -185,10 +193,41 @@ export default function OrderTaking() {
           {/* Notes */}
           <div className="p-3 border-t border-dark-border">
             <input className="input-field text-sm py-2 mb-3" placeholder="Order notes (optional)..." value={notes} onChange={e => setNotes(e.target.value)} />
+            <input 
+              type="number" 
+              min="0" 
+              max="100" 
+              className="input-field text-sm py-2 mb-3" 
+              placeholder="Discount % (optional)" 
+              value={discountPercentage} 
+              onChange={e => {
+                const val = e.target.value;
+                if (val === '') {
+                  setDiscountPercentage('');
+                } else {
+                  const num = parseFloat(val);
+                  if (num > 100) setDiscountPercentage('100');
+                  else if (num < 0) setDiscountPercentage('0');
+                  else setDiscountPercentage(val);
+                }
+              }} 
+            />
             {/* Total */}
+            {discountPercentage && parseFloat(discountPercentage) > 0 ? (
+              <>
+                <div className="flex justify-between mb-1">
+                  <span className="text-white/40 text-sm">Subtotal</span>
+                  <span className="text-white/60 text-sm">₹{total.toFixed(0)}</span>
+                </div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-white/40 text-sm">Discount ({discountPercentage}%)</span>
+                  <span className="text-gold/80 text-sm">-₹{((total * parseFloat(discountPercentage)) / 100).toFixed(0)}</span>
+                </div>
+              </>
+            ) : null}
             <div className="flex justify-between mb-3">
               <span className="text-white/60">Total</span>
-              <span className="text-2xl font-bold text-gold">₹{total.toFixed(0)}</span>
+              <span className="text-2xl font-bold text-gold">₹{discountPercentage && parseFloat(discountPercentage) > 0 ? (total - (total * parseFloat(discountPercentage) / 100)).toFixed(0) : total.toFixed(0)}</span>
             </div>
             <button onClick={handlePlaceOrder} disabled={submitting || cart.length === 0}
               className="btn-gold w-full justify-center py-3 text-base disabled:opacity-50">
